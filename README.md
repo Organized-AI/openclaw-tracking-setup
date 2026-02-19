@@ -34,6 +34,126 @@ Phase 6 adds browser automation for tasks that require eyes on the page:
 
 ---
 
+## CLI Tools
+
+OpenClaw includes a full CLI suite built on the [mcporter](https://github.com/steipete/mcporter) pattern — pure bash scripts that wrap MCP server calls into composable commands.
+
+### Installation
+
+```bash
+# Install mcporter (required dependency)
+npm install -g @nicepkg/mcporter
+
+# Clone the repo and make CLI tools executable
+git clone https://github.com/Organized-AI/openclaw-tracking-setup.git
+cd openclaw-tracking-setup
+chmod +x CLI-TOOLS/openclaw CLI-TOOLS/openclaw-*
+
+# Add to PATH (optional)
+export PATH="$PATH:$(pwd)/CLI-TOOLS"
+```
+
+### CLI Architecture
+
+```
+CLI-TOOLS/
+├── openclaw              # Main entry point — routes to sub-tools
+├── openclaw-gtm          # GTM container operations
+├── openclaw-gads         # Google Ads GAQL queries & conversion audit
+├── openclaw-meta         # Meta Pixel + CAPI audit & event mapping
+├── openclaw-stape        # Stape sGTM container management
+├── openclaw-discover     # Site crawl & tracking opportunity discovery
+├── openclaw-preview      # GTM Preview mode validation
+├── openclaw-qa           # YAML test story runner
+├── lib/
+│   ├── common.sh         # Shared utilities, colors, logging, mcporter wrapper
+│   └── gtm-helpers.sh    # GTM MCP helper functions
+├── config/
+│   └── mcporter.json     # MCP server definitions
+└── stories/              # QA test story files (YAML)
+```
+
+### Environment Variables
+
+```bash
+# GTM (required for gtm, meta, preview commands)
+export GTM_ACCOUNT_ID="your-account-id"
+export GTM_CONTAINER_ID="your-container-id"
+export GTM_WORKSPACE_ID="your-workspace-id"
+
+# Stape (required for stape commands)
+export STAPE_CONTAINER_ID="your-stape-container-id"
+
+# Google Ads (required for gads commands)
+export GOOGLE_ADS_CUSTOMER_ID="your-customer-id"
+export GOOGLE_ADS_LOGIN_CUSTOMER_ID="your-login-cid"
+```
+
+### Usage
+
+```bash
+# Check environment and MCP server connectivity
+openclaw env
+
+# ─── GTM Operations ───
+openclaw gtm audit              # Full container audit (tags + triggers + vars + clients)
+openclaw gtm list-tags           # List all tags
+openclaw gtm list-triggers       # List all triggers
+openclaw gtm list-vars           # List all variables
+openclaw gtm list-clients        # List sGTM clients
+openclaw gtm status              # Workspace change status
+openclaw gtm publish             # Create version and publish (with confirmation)
+
+# ─── Google Ads ───
+openclaw gads accounts           # List accessible accounts
+openclaw gads conversions        # Audit all conversion actions
+openclaw gads campaigns          # Campaign performance metrics
+openclaw gads query 'SELECT campaign.name FROM campaign'  # Custom GAQL
+
+# ─── Meta ───
+openclaw meta audit              # Audit Meta/Facebook tags in GTM
+openclaw meta pixel-tags         # List Pixel tag configurations
+openclaw meta event-map          # GA4 ↔ Meta event mapping table
+
+# ─── Stape sGTM ───
+openclaw stape containers        # List all Stape containers
+openclaw stape get --id ABC123   # Get container details
+openclaw stape domains --id X    # List container domains
+openclaw stape power-ups --id X  # Check power-up status
+
+# ─── Site Discovery ───
+openclaw discover https://example.com              # Crawl and identify tracking opportunities
+openclaw discover https://example.com --depth 3    # Deeper crawl
+openclaw discover https://example.com --format json # JSON output
+
+# ─── GTM Preview Validation ───
+openclaw preview https://example.com                    # Basic validation
+openclaw preview https://example.com --full             # Full validation suite
+openclaw preview https://example.com --check-consent    # Consent mode check
+
+# ─── QA Test Stories ───
+openclaw qa init my-test                  # Create test story template
+openclaw qa run stories/my-test.yaml      # Run test story
+openclaw qa validate stories/my-test.yaml # Validate YAML syntax
+openclaw qa list                          # List available stories
+```
+
+### How the CLI Works
+
+Each CLI tool wraps MCP server calls via mcporter. For example, `openclaw gtm list-tags` translates to:
+
+```bash
+mcporter call gtm-mcp-server.gtm_tag \
+  action:list \
+  accountId:$GTM_ACCOUNT_ID \
+  containerId:$GTM_CONTAINER_ID \
+  workspaceId:$GTM_WORKSPACE_ID
+```
+
+The `mcp()` wrapper function in `lib/common.sh` handles mcporter detection, fallback to npx, and JSON output formatting. GTM-specific operations live in `lib/gtm-helpers.sh` as reusable bash functions shared across `openclaw-gtm` and `openclaw-meta`.
+
+---
+
 ## Repository Structure
 
 ```
@@ -42,6 +162,18 @@ openclaw-tracking-setup/
 ├── CLAUDE.md                         # Project instructions for Claude
 ├── OPENCLAW-MASTER-PLAN.md           # Architecture & MCP tool inventory
 ├── OPENCLAW-CLAUDE-CODE-PROMPTS.md   # All 7 phase prompts (copy-paste ready)
+│
+├── CLI-TOOLS/                        # Bash CLI suite (mcporter pattern)
+│   ├── openclaw                      # Main dispatcher
+│   ├── openclaw-gtm                  # GTM operations
+│   ├── openclaw-gads                 # Google Ads queries
+│   ├── openclaw-meta                 # Meta Pixel + CAPI
+│   ├── openclaw-stape                # Stape sGTM management
+│   ├── openclaw-discover             # Site discovery agent
+│   ├── openclaw-preview              # GTM Preview validation
+│   ├── openclaw-qa                   # QA test story runner
+│   ├── lib/                          # Shared libraries
+│   └── config/                       # MCP server config
 │
 ├── PLANNING/
 │   └── BOWSER-OPENCLAW-INTEGRATION-PLAN.md  # Browser automation integration plan
@@ -104,6 +236,7 @@ Each phase has a self-contained Claude Code prompt. You copy-paste the prompt, C
 ### Prerequisites
 
 - [Claude Code](https://claude.ai/claude-code) installed
+- [mcporter](https://github.com/steipete/mcporter) installed (`npm install -g @nicepkg/mcporter`)
 - MCP servers configured: GTM MCP (Stape), Google Ads MCP, Stape MCP
 - Access to target GTM container and ad platform accounts
 
@@ -113,13 +246,22 @@ Each phase has a self-contained Claude Code prompt. You copy-paste the prompt, C
 # Required for all plugins
 export STAPE_API_KEY="your-stape-api-key"
 
+# GTM identifiers
+export GTM_ACCOUNT_ID="your-account-id"
+export GTM_CONTAINER_ID="your-container-id"
+export GTM_WORKSPACE_ID="your-workspace-id"
+
 # Google Ads
 export GOOGLE_ADS_DEVELOPER_TOKEN="your-dev-token"
 export GOOGLE_ADS_LOGIN_CUSTOMER_ID="your-login-cid"
+export GOOGLE_ADS_CUSTOMER_ID="your-customer-id"
 
 # Meta (requires Pipeboard connection)
 export META_ACCESS_TOKEN="your-meta-token"
 export META_PIXEL_ID="your-pixel-id"
+
+# Stape
+export STAPE_CONTAINER_ID="your-stape-container-id"
 
 # Bowser (Phase 6)
 export PLAYWRIGHT_MCP_VIEWPORT_SIZE=1440x900
@@ -131,6 +273,12 @@ export PLAYWRIGHT_MCP_VIEWPORT_SIZE=1440x900
 # Clone the repo
 git clone https://github.com/Organized-AI/openclaw-tracking-setup.git
 cd openclaw-tracking-setup
+
+# Make CLI tools executable
+chmod +x CLI-TOOLS/openclaw CLI-TOOLS/openclaw-*
+
+# Check your environment
+./CLI-TOOLS/openclaw env
 
 # Start with Phase 0 — scaffolds all three plugins
 claude --dangerously-skip-permissions
@@ -189,6 +337,8 @@ The `tracking-references/` directory contains implementation patterns extracted 
 | Phase Prompts (0-5) | ✅ Complete |
 | Phase 6 Bowser Integration Plan | ✅ Complete |
 | Claude Code Prompts (all 7 phases) | ✅ Complete |
+| CLI Tools (8 sub-tools + libraries) | ✅ Complete |
+| Newsletter & LinkedIn Post | ✅ Complete |
 | Plugin Build (Phases 0-6) | 🔲 Ready to Execute |
 
 ---
@@ -205,12 +355,17 @@ New platform integration patterns go in `tracking-references/` following the exi
 
 Each plugin in `plugin-marketplace/` follows the Claude Code plugin spec: `plugin.json` for metadata, `skills/` for knowledge, `agents/` for autonomy, `commands/` for execution, and `hooks/` for safety gates.
 
+### Extending CLI Tools
+
+New CLI tools follow the same pattern: create a `CLI-TOOLS/openclaw-{name}` bash script, source `lib/common.sh` for utilities, and use the `mcp()` wrapper function for MCP server calls. Add the tool's routing entry to the main `openclaw` dispatcher.
+
 ---
 
 ## Related Projects
 
 - [gtm-ai-plugin](https://github.com/organized-ai/gtm-ai-plugin) — The original GTM plugin that OpenClaw extends
 - [blade-linkedin-plugin](https://github.com/organized-ai/blade-linkedin-plugin) — LinkedIn-specific tracking deployment
+- [mcporter](https://github.com/steipete/mcporter) — MCP-to-CLI toolkit powering the OpenClaw CLI suite
 - [sheepdog-movie](https://github.com/organized-ai) — Reference client implementation
 
 ---
