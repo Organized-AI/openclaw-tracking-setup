@@ -15,9 +15,10 @@
 | Phase 2 | openclaw-google-ads | Medium | Phase 0 |
 | Phase 3 | openclaw-meta | Medium | Phase 0 + Phase 1 |
 | Phase 4 | OpenClaw wrappers | After 1-3 | Phases 1-3 |
-| Phase 5 | Integration testing | Last | All phases |
+| Phase 5 | Integration testing | After 4 | All phases |
+| Phase 6 | Bowser browser layer | After 0 | Phase 0 (enhances all) |
 
-**Run Phase 0 first, then Phase 1. Phases 2 and 3 can run in parallel after Phase 0.**
+**Run Phase 0 first, then Phase 1. Phases 2 and 3 can run in parallel after Phase 0. Phase 6 (Bowser) can run any time after Phase 0 — it provides browser-based discovery, GTM Preview validation, and QA testing that enhances all other phases.**
 
 ---
 
@@ -519,4 +520,155 @@ GOOGLE_ADS_DEVELOPER_TOKEN=<your-dev-token>
 GOOGLE_ADS_LOGIN_CUSTOMER_ID=<your-login-cid>
 META_PIXEL_ID=<your-pixel-id>
 META_ACCESS_TOKEN=<your-meta-token>
+```
+
+---
+
+## Phase 6: Bowser Browser Layer — Discovery, GTM Preview & QA
+
+> **Source**: [disler/bowser](https://github.com/disler/bowser) — Agentic browser automation for Claude Code
+> **Plan**: `PLANNING/BOWSER-OPENCLAW-INTEGRATION-PLAN.md`
+
+### Claude Code Prompt (copy-paste)
+
+```
+claude --dangerously-skip-permissions
+
+cd "/Users/supabowl/Library/Mobile Documents/com~apple~CloudDocs/BHT Promo iCloud/Organized AI/Windsurf/openclaw-tracking-setup"
+
+Read PLANNING/BOWSER-OPENCLAW-INTEGRATION-PLAN.md first — it contains the full architecture, skill definitions, agent patterns, and YAML story format.
+
+Also read:
+- OPENCLAW-CLAUDE-CODE-PROMPTS.md (existing phase structure)
+- .claude/ directory (existing skill/agent/command structure from Organized Codebase)
+
+You are building the browser automation layer for OpenClaw. This adds three capabilities:
+1. **Page Discovery** — Scrape websites to identify GTM tracking opportunities (Tags, Triggers, Variables)
+2. **GTM Preview Validation** — Test tag firing in real Chrome with GTM Preview mode
+3. **Conversion QA** — YAML story-based test scenarios that validate tracking implementations
+
+## What to Build
+
+### 1. Skills (.claude/skills/)
+
+**openclaw-discovery/SKILL.md**
+- Playwright-Bowser based page scraping skill
+- Visits URLs, captures accessibility tree snapshots via `playwright-cli snapshot`
+- Classifies elements: forms → Form Submission triggers, buttons → Click triggers, videos → YouTube triggers, scroll containers → Scroll Depth triggers, tel:/mailto: links → Link Click triggers, data-* attributes → Custom Event triggers
+- Inspects dataLayer via `playwright-cli run-code "JSON.stringify(window.dataLayer || [])"`
+- Checks existing tracking: fbq, gtag, google_tag_manager objects
+- Captures network baseline via `playwright-cli network`
+- Outputs structured YAML discovery report (see plan for format)
+- Key commands: open, snapshot, screenshot, run-code, network
+
+**openclaw-preview/SKILL.md**
+- Chrome MCP based GTM Preview validation skill
+- Pre-flight: check mcp__claude_in_chrome__tabs_context_mcp exists, resize to 1440x900
+- Read dataLayer via javascript_tool: `JSON.stringify(window.dataLayer.filter(e => typeof e === 'object'), null, 2)`
+- Capture network requests via read_network_requests with urlPattern filters
+- Filter for: google-analytics.com, googleads.g.doubleclick.net, facebook.com/tr, ads.linkedin.com, analytics.tiktok.com, tr.snapchat.com
+- Check console via read_console_messages with pattern "GTM|gtm|dataLayer|error|Error"
+- Screenshot GTM Preview panel state
+- Generate validation report: expected vs actual tag firing
+
+**openclaw-qa/SKILL.md**
+- YAML story execution skill for tracking validation
+- Reads story files from stories/ directory
+- Executes steps sequentially: navigate → fill → click → wait
+- After each action step, validates:
+  - dataLayer contains expected events with correct parameters
+  - Network requests to tracking endpoints were fired
+  - Console has no errors
+- Reports PASS/FAIL per step with screenshots as evidence
+- Uses either Playwright or Chrome MCP depending on story config
+
+### 2. Agents (.claude/agents/)
+
+**discovery-agent.md**
+- Autonomous agent that crawls N pages of a website
+- Uses openclaw-discovery skill
+- Produces comprehensive tracking opportunity YAML report
+- Maps each opportunity to specific GTM tag/trigger/variable configs ready for openclaw-gtm
+- Model: opus for thorough analysis
+
+**preview-agent.md**
+- Connects to Chrome browser with GTM Preview active
+- Uses openclaw-preview skill
+- Navigates through specified user journeys
+- Captures and validates all tag firings against expected configuration
+- Reports mismatches with screenshot evidence
+
+**qa-agent.md**
+- Based on Bowser's bowser-qa-agent.md pattern
+- Uses openclaw-qa skill
+- Executes YAML stories from stories/ directory
+- Sequential step execution with screenshots
+- PASS/FAIL per step with evidence (dataLayer state, network requests, console output)
+- Structured report table format
+
+### 3. Commands (.claude/commands/)
+
+**discover.md**: "Discover tracking opportunities on $ARGUMENTS" — Takes a URL, runs discovery agent, outputs YAML report
+**validate.md**: "Validate GTM Preview for $ARGUMENTS" — Takes a URL, opens Chrome MCP, validates tag firing
+**qa-run.md**: "Run QA stories for $ARGUMENTS" — Takes a story file or directory, executes all stories
+**full-audit.md**: "Run full discovery + validation + QA pipeline" — Chains all three: discover → validate → qa-run
+
+### 4. Story Templates (stories/templates/)
+
+Create YAML templates for common tracking scenarios:
+
+**lead-form.yaml** — Form submission fires: GA4 generate_lead, Meta Lead, Google Ads conversion
+**ecommerce-purchase.yaml** — Add to cart → checkout → purchase fires: GA4 purchase, Meta Purchase, Google Ads conversion with value
+**phone-click.yaml** — tel: link click fires: GA4 phone_click, Google Ads call conversion
+**video-engagement.yaml** — YouTube video start/progress/complete fires: GA4 video events
+**scroll-depth.yaml** — 25/50/75/100% scroll fires: GA4 scroll events
+
+Each story must follow the YAML format defined in the integration plan (steps with action, selector, validate blocks).
+
+### 5. Endpoint Registry (endpoints/tracking-endpoints.yaml)
+
+Define all known tracking endpoints with pattern and key_params:
+- ga4, google_ads, meta_pixel, meta_capi, linkedin, tiktok, snapchat, sgtm
+
+### 6. Directory Structure
+
+Create these directories with .gitkeep:
+- stories/clients/
+- reports/
+
+## Key Patterns from Bowser
+
+Follow Bowser's four-layer architecture:
+- **Skills** are capabilities (single concern, reusable)
+- **Agents** scale skills (autonomous, structured output)
+- **Commands** orchestrate agents (user-facing entry points)
+- **Stories** define test scenarios declaratively (YAML)
+
+Always screenshot on failure. Structured PASS/FAIL reporting for all QA.
+
+## Dependencies
+
+- playwright-cli (for headless discovery — install via npm if not present)
+- Chrome MCP tools (for GTM Preview — requires claude --chrome flag)
+- GTM MCP tools from Stape (for creating tags/triggers/variables from discovery results)
+
+## Verification
+
+After building:
+1. Verify all 3 skill SKILL.md files exist with substantive content
+2. Verify all 3 agent .md files follow Bowser patterns
+3. Verify all 4 command .md files are actionable
+4. Verify all 5 YAML story templates parse correctly
+5. Verify tracking-endpoints.yaml is valid YAML
+6. Verify directory structure matches the integration plan
+7. Run: find .claude/skills/openclaw-* -type f | wc -l
+8. Run: find stories/ -name "*.yaml" | wc -l
+9. Git add, commit, and push all changes
+```
+
+### Environment Variables for Claude Code Web
+
+```
+STAPE_API_KEY=<your-stape-key>
+PLAYWRIGHT_MCP_VIEWPORT_SIZE=1440x900
 ```
