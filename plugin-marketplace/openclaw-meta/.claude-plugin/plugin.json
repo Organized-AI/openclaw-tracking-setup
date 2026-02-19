@@ -1,0 +1,24 @@
+{
+  "name": "openclaw-meta",
+  "description": "Autonomous Meta Pixel + Conversions API builder. Deploys dual-tracking with client-side Pixel via GTM and server-side CAPI via sGTM with event_id deduplication.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Organized AI",
+    "url": "https://github.com/organized-ai"
+  },
+  "keywords": ["meta", "pixel", "capi", "conversions-api", "openclaw", "tracking"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Organized-AI/openclaw-tracking-setup"
+  },
+  "license": "MIT",
+  "engines": {
+    "claude-code": ">=1.0.0"
+  },
+  "capabilities": {
+    "commands": true,
+    "agents": true,
+    "skills": true,
+    "hooks": true
+  }
+}

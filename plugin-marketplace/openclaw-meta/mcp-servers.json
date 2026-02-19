@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "gtm-mcp": {
+      "type": "sse",
+      "url": "https://gtm-mcp.stape.ai/mcp",
+      "tools": ["gtm_tag", "gtm_trigger", "gtm_variable", "gtm_workspace", "gtm_version"]
+    },
+    "stape-mcp": {
+      "type": "sse",
+      "url": "https://mcp.stape.ai/sse",
+      "tools": ["stape_container_crud", "stape_container_power_ups", "stape_container_domains"],
+      "env": {
+        "STAPE_API_KEY": "${STAPE_API_KEY}"
+      }
+    }
+  }
+}
