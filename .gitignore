@@ -8,3 +8,9 @@ dist/
 build/
 .next/
 .cache/
+
+# Sensitive config (credentials filled in)
+mcporter-config/*.local.json
+
+# Memory files (per-client, not committed)
+memory/

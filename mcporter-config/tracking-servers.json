@@ -1,0 +1,34 @@
+{
+  "servers": {
+    "gtm": {
+      "command": "npx",
+      "args": ["@anthropic/gtm-mcp-server"],
+      "env": {
+        "GTM_ACCOUNT_ID": "{{FILL: GTM Account ID}}",
+        "GTM_OAUTH_CLIENT_ID": "{{FILL: OAuth Client ID}}",
+        "GTM_OAUTH_CLIENT_SECRET": "{{FILL: OAuth Client Secret}}",
+        "GTM_OAUTH_REFRESH_TOKEN": "{{FILL: OAuth Refresh Token}}"
+      }
+    },
+    "stape": {
+      "command": "npx",
+      "args": ["stape-mcp-server"],
+      "env": {
+        "STAPE_API_KEY": "{{FILL: Stape API Key}}"
+      }
+    }
+  },
+  "cli_tools": {
+    "google-ads-cli": {
+      "path": "{{FILL: path to google-ads-cli binary or npm package}}",
+      "config": "~/.google-ads-cli/config.json",
+      "capabilities": "Full read+write: campaigns, ad groups, ads, keywords, conversion actions",
+      "docs": "See google-ads-cli TOOLS.md for all 35 commands"
+    },
+    "meta-ads-cli": {
+      "path": "{{FILL: path to meta-ads-cli binary or npm package}}",
+      "capabilities": "Full CRUD: campaigns, ad sets, ads, creatives, insights, targeting",
+      "docs": "See meta-ads-cli TOOLS-SECTION.md for all commands"
+    }
+  }
+}
