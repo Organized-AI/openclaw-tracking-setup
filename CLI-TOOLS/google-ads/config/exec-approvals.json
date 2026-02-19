@@ -1,0 +1,100 @@
+{
+  "version": "1.0",
+  "description": "Google Ads CLI exec-approvals — allows all 35 MCP tools (read + write)",
+  "context": "google-ads-agent",
+  "default_action": "deny",
+  "log_all_attempts": true,
+  "log_file": "~/.openclaw/logs/google-ads-exec.log",
+
+  "rules": [
+    {
+      "id": "allow-google-ads-read",
+      "description": "All read/query operations — safe, no side effects",
+      "binary": "google-ads-cli",
+      "action": "allow",
+      "argument_rules": {
+        "allowed_subcommands": [
+          "list-campaigns",
+          "get-campaign",
+          "list-ad-groups",
+          "get-ad-group",
+          "list-ads",
+          "get-ad-performance",
+          "list-keywords",
+          "get-keyword-performance",
+          "get-account-performance",
+          "get-campaign-performance",
+          "get-ad-group-performance",
+          "get-search-terms-report",
+          "list-accessible-customers",
+          "get-account-hierarchy",
+          "get-account-info",
+          "list-manager-accounts",
+          "get-top-bottom-keywords",
+          "get-keyword-opportunities",
+          "get-campaign-comparison",
+          "list-conversion-actions",
+          "get-conversion-stats",
+          "get-product-performance",
+          "get-product-partition-performance",
+          "get-top-bottom-products"
+        ]
+      }
+    },
+    {
+      "id": "allow-google-ads-write",
+      "description": "Write/mutation operations — creates and updates ads resources",
+      "binary": "google-ads-cli",
+      "action": "allow",
+      "argument_rules": {
+        "allowed_subcommands": [
+          "create-campaign",
+          "update-campaign",
+          "create-ad-group",
+          "update-ad-group",
+          "create-responsive-search-ad",
+          "update-ad",
+          "add-keywords",
+          "add-negative-keywords",
+          "update-keyword",
+          "create-conversion-action",
+          "update-conversion-action"
+        ]
+      },
+      "notes": "All write tools create resources in PAUSED state by default"
+    },
+    {
+      "id": "allow-google-ads-help",
+      "description": "CLI help and introspection",
+      "binary": "google-ads-cli",
+      "action": "allow",
+      "argument_rules": {
+        "allowed_subcommands": ["--help", "-h", "--version"]
+      }
+    }
+  ],
+
+  "tool_inventory": {
+    "total": 35,
+    "read_tools": 24,
+    "write_tools": 11,
+    "categories": {
+      "campaigns": { "read": ["list-campaigns", "get-campaign"], "write": ["create-campaign", "update-campaign"] },
+      "ad_groups": { "read": ["list-ad-groups", "get-ad-group"], "write": ["create-ad-group", "update-ad-group"] },
+      "ads": { "read": ["list-ads", "get-ad-performance"], "write": ["create-responsive-search-ad", "update-ad"] },
+      "keywords": { "read": ["list-keywords", "get-keyword-performance"], "write": ["add-keywords", "add-negative-keywords", "update-keyword"] },
+      "performance": { "read": ["get-account-performance", "get-campaign-performance", "get-ad-group-performance", "get-search-terms-report"], "write": [] },
+      "accounts": { "read": ["list-accessible-customers", "get-account-hierarchy", "get-account-info", "list-manager-accounts"], "write": [] },
+      "analytics": { "read": ["get-top-bottom-keywords", "get-keyword-opportunities", "get-campaign-comparison"], "write": [] },
+      "conversions": { "read": ["list-conversion-actions", "get-conversion-stats"], "write": ["create-conversion-action", "update-conversion-action"] },
+      "shopping": { "read": ["get-product-performance", "get-product-partition-performance", "get-top-bottom-products"], "write": [] }
+    }
+  },
+
+  "notes": [
+    "Deploy to Mac Mini: merge into ~/.openclaw/config/exec-approvals.json",
+    "Write tools default to PAUSED state — safe for production accounts",
+    "MCPorter CLI converts underscores to hyphens: create_campaign -> create-campaign",
+    "All tools need GOOGLE_ADS_* env vars — credential bridge handles this"
+  ]
+}
