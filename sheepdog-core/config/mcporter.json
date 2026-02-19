@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "google-tag-manager-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://gtm-mcp.stape.ai/mcp",
+        "--allow-http"
+      ]
+    },
+    "stape-mcp-server": {
+      "baseUrl": "https://mcp.stape.ai/sse",
+      "headers": {
+        "x-api-key": "c8420c93dd0aff31ac92207dec626843775210b7"
+      }
+    }
+  },
+  "imports": []
+}

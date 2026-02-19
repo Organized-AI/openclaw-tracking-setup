@@ -1,0 +1,26 @@
+{
+  "name": "wonder-project-crawler",
+  "version": "1.0.0",
+  "description": "Site crawler for GTM tracking analysis",
+  "scripts": {
+    "crawl": "node site-crawler.js",
+    "analyze": "node site-crawler.js analyze",
+    "screenshot": "node site-crawler.js screenshot"
+  },
+  "keywords": [
+    "gtm",
+    "browser",
+    "crawler",
+    "tracking",
+    "analysis"
+  ],
+  "main": "site-crawler.js",
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.58.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "blade-gtm-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Local GTM MCP server for BLADE LinkedIn implementation",
+  "main": "dist/index.js",
+  "bin": {
+    "blade-gtm-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/test.ts",
+    "verify": "tsx src/verify.ts",
+    "verify:quick": "tsx src/verify.ts --quick"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "googleapis": "^140.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

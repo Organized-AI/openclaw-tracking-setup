@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Credentials - NEVER commit
+credentials/
+*.json.enc
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/

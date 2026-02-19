@@ -1,0 +1,190 @@
+{
+  "results": [
+    {
+      "metadata": {
+        "title": "It's Not Like That - A Wonder Project Original | Stream Now",
+        "url": "https://joinwonderproject.com/its-not-like-that-episode",
+        "description": "Watch 'It's Not Like That' - a new original series from Wonder Project, the independent streaming studio. Start your free trial and discover exclusive originals.",
+        "ogTitle": "It's Not Like That - A Wonder Project Original",
+        "ogType": "website",
+        "canonical": null
+      },
+      "actions": {
+        "buttons": [
+          {
+            "text": "Start Your Free Trial",
+            "id": null,
+            "class": "inline-flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 [border-color:var(--button-outline)] shadow-xs active:shadow-none min-h-9 rounded-md bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#0E0F52] font-heading font-bold uppercase px-5 sm:px-6 py-2 text-[0.65rem] sm:text-xs tracking-wider transition-colors",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-header-trial"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-gradient-to-r from-[#FFEDA9] to-[#D1A43F]",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-0"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-1"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-2"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-3"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-4"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-5"
+            }
+          },
+          {
+            "text": "",
+            "id": null,
+            "class": "w-2 h-2 rounded-full transition-colors bg-white/30",
+            "type": "submit",
+            "dataAttributes": {
+              "testid": "button-praise-dot-6"
+            }
+          }
+        ],
+        "links": [],
+        "forms": [],
+        "videos": [],
+        "scrollSections": [],
+        "dataLayerEvents": [],
+        "existingTracking": []
+      },
+      "screenshot": "page-01-It-s-Not-Like-That---A-Wonder-.png",
+      "crawledAt": "2026-02-04T17:34:20.962Z"
+    },
+    {
+      "metadata": {
+        "title": "",
+        "url": "https://joinwonderproject.com/assets/resource-guide.pdf",
+        "description": null,
+        "ogTitle": null,
+        "ogType": null,
+        "canonical": null
+      },
+      "actions": {
+        "buttons": [],
+        "links": [],
+        "forms": [],
+        "videos": [],
+        "scrollSections": [],
+        "dataLayerEvents": [],
+        "existingTracking": []
+      },
+      "screenshot": "page-02-.png",
+      "crawledAt": "2026-02-04T17:34:27.215Z"
+    }
+  ],
+  "recommendations": {
+    "tags": [
+      {
+        "name": "GA4 - Page View",
+        "type": "Google Analytics 4",
+        "trigger": "All Pages",
+        "priority": "High"
+      },
+      {
+        "name": "GA4 - Form Submission",
+        "type": "Google Analytics 4 Event",
+        "trigger": "Form Submission",
+        "priority": "High"
+      },
+      {
+        "name": "GA4 - Video Engagement",
+        "type": "Google Analytics 4 Event",
+        "trigger": "YouTube Video / Custom Video",
+        "priority": "Medium"
+      },
+      {
+        "name": "GA4 - Scroll Depth",
+        "type": "Google Analytics 4 Event",
+        "trigger": "Scroll Depth",
+        "priority": "Medium"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "Form Submission",
+        "type": "Form Submission",
+        "filter": "All Forms"
+      },
+      {
+        "name": "Video Play",
+        "type": "YouTube Video / Custom Event",
+        "filter": "youtube"
+      },
+      {
+        "name": "Scroll Depth",
+        "type": "Scroll Depth",
+        "filter": "25%, 50%, 75%, 90%"
+      }
+    ],
+    "variables": [
+      {
+        "name": "Page URL",
+        "type": "Built-in - Page URL"
+      },
+      {
+        "name": "Page Path",
+        "type": "Built-in - Page Path"
+      },
+      {
+        "name": "Click Text",
+        "type": "Built-in - Click Text"
+      },
+      {
+        "name": "Click URL",
+        "type": "Built-in - Click URL"
+      },
+      {
+        "name": "Click Classes",
+        "type": "Built-in - Click Classes"
+      },
+      {
+        "name": "Form ID",
+        "type": "Built-in - Form ID"
+      }
+    ]
+  }
+}
