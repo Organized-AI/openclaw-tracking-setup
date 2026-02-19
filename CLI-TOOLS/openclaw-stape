@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw Stape — sGTM container management
+# Uses Stape MCP via mcporter
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+show_help() {
+  print_header "Stape"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw stape ${CYAN}<subcommand>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}SUBCOMMANDS${RESET}"
+  echo -e "  ${CYAN}containers${RESET}     List all Stape containers"
+  echo -e "  ${CYAN}get${RESET}            Get container details"
+  echo -e "  ${CYAN}domains${RESET}        List container domains"
+  echo -e "  ${CYAN}stats${RESET}          Get container usage statistics"
+  echo -e "  ${CYAN}power-ups${RESET}      List active power-ups"
+  echo -e "  ${CYAN}analytics${RESET}      Get container analytics info"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# List all containers${RESET}"
+  echo -e "  openclaw stape containers"
+  echo
+  echo -e "  ${DIM}# Get domains for a container${RESET}"
+  echo -e "  openclaw stape domains --id abc123"
+}
+
+# ── Parse options ───────────────────────────────────────────────────────────
+CONTAINER_ID="${STAPE_CONTAINER_ID:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id) CONTAINER_ID="$2"; shift 2 ;;
+    --id=*) CONTAINER_ID="${1#*=}"; shift ;;
+    *) break ;;
+  esac
+done
+
+stape_require_id() {
+  if [[ -z "$CONTAINER_ID" ]]; then
+    log_error "Container ID required. Use --id <id> or export STAPE_CONTAINER_ID"
+    exit 1
+  fi
+}
+
+case "${1:-help}" in
+  containers)
+    print_header "Stape Containers"
+    mcp_call_pretty stape-mcp-server.stape_container_crud action:get_all
+    ;;
+
+  get)
+    print_header "Container Details"
+    stape_require_id
+    mcp_call_pretty stape-mcp-server.stape_container_crud \
+      action:get identifier:"$CONTAINER_ID"
+    ;;
+
+  domains)
+    print_header "Container Domains"
+    stape_require_id
+    mcp_call_pretty stape-mcp-server.stape_container_domains \
+      action:list container:"$CONTAINER_ID"
+    ;;
+
+  stats)
+    print_header "Container Statistics"
+    stape_require_id
+    mcp_call_pretty stape-mcp-server.stape_container_statistics \
+      action:get_statistics identifier:"$CONTAINER_ID"
+    ;;
+
+  power-ups)
+    print_header "Container Power-ups"
+    stape_require_id
+    # List common power-ups status
+    for powerup in cookie_keeper geo_headers user_agent_headers bot_detection anonymizer; do
+      echo -e "${CYAN}$powerup:${RESET}"
+      mcp_call_pretty stape-mcp-server.stape_container_power_ups \
+        powerUpType:"$powerup" identifier:"$CONTAINER_ID" isActive:true 2>/dev/null || echo "  not configured"
+    done
+    ;;
+
+  analytics)
+    print_header "Container Analytics"
+    stape_require_id
+    mcp_call_pretty stape-mcp-server.stape_container_analytics \
+      action:get_info identifier:"$CONTAINER_ID"
+    ;;
+
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    log_error "Unknown stape subcommand: $1"
+    show_help
+    exit 1
+    ;;
+esac

@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw Google Ads — Conversion tracking operations
+# Uses Google Ads MCP via mcporter
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+# ── Config ──────────────────────────────────────────────────────────────────
+GOOGLE_ADS_CUSTOMER_ID="${GOOGLE_ADS_CUSTOMER_ID:-}"
+GOOGLE_ADS_LOGIN_CUSTOMER_ID="${GOOGLE_ADS_LOGIN_CUSTOMER_ID:-}"
+
+gads_ensure_ids() {
+  if [[ -z "$GOOGLE_ADS_CUSTOMER_ID" || -z "$GOOGLE_ADS_LOGIN_CUSTOMER_ID" ]]; then
+    log_error "Google Ads IDs not set. Export these:"
+    log_dim   "  GOOGLE_ADS_CUSTOMER_ID=1234567890"
+    log_dim   "  GOOGLE_ADS_LOGIN_CUSTOMER_ID=1234567890"
+    exit 1
+  fi
+}
+
+# ── GAQL query runner ───────────────────────────────────────────────────────
+gads_query() {
+  local gaql="$1"
+  gads_ensure_ids
+  mcp_call google-ads.google-ads-download-report \
+    query:"$gaql" \
+    customerId:"$GOOGLE_ADS_CUSTOMER_ID" \
+    loginCustomerId:"$GOOGLE_ADS_LOGIN_CUSTOMER_ID"
+}
+
+show_help() {
+  print_header "Google Ads"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw gads ${CYAN}<subcommand>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}SUBCOMMANDS${RESET}"
+  echo -e "  ${CYAN}accounts${RESET}       List accessible Google Ads accounts"
+  echo -e "  ${CYAN}conversions${RESET}    List all conversion actions"
+  echo -e "  ${CYAN}campaigns${RESET}      List campaigns with performance"
+  echo -e "  ${CYAN}audit${RESET}          Full conversion tracking audit"
+  echo -e "  ${CYAN}query${RESET}          Run a custom GAQL query"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# List all conversion actions${RESET}"
+  echo -e "  openclaw gads conversions"
+  echo
+  echo -e "  ${DIM}# Custom GAQL query${RESET}"
+  echo -e "  openclaw gads query 'SELECT campaign.name FROM campaign LIMIT 10'"
+}
+
+case "${1:-help}" in
+  accounts)
+    print_header "Google Ads Accounts"
+    mcp_call_pretty google-ads.list-accounts
+    ;;
+
+  conversions)
+    print_header "Conversion Actions"
+    gads_query "SELECT conversion_action.id, conversion_action.name, conversion_action.type, conversion_action.status, conversion_action.category FROM conversion_action ORDER BY conversion_action.name"
+    ;;
+
+  campaigns)
+    print_header "Campaigns"
+    gads_query "SELECT campaign.id, campaign.name, campaign.status, metrics.impressions, metrics.clicks, metrics.conversions, metrics.cost_micros FROM campaign WHERE campaign.status != 'REMOVED' ORDER BY metrics.impressions DESC LIMIT 25"
+    ;;
+
+  audit)
+    print_header "Google Ads Audit"
+    gads_ensure_ids
+    echo
+
+    log_step "Conversion Actions:"
+    gads_query "SELECT conversion_action.id, conversion_action.name, conversion_action.type, conversion_action.status, conversion_action.category, conversion_action.tag_snippets FROM conversion_action ORDER BY conversion_action.name"
+    echo
+
+    log_step "Campaign Conversion Settings:"
+    gads_query "SELECT campaign.id, campaign.name, campaign_budget.amount_micros, campaign.bidding_strategy_type FROM campaign WHERE campaign.status = 'ENABLED' LIMIT 20"
+    echo
+
+    log_step "Remarketing Audiences:"
+    gads_query "SELECT user_list.id, user_list.name, user_list.type, user_list.size_for_display, user_list.membership_status FROM user_list ORDER BY user_list.name LIMIT 20"
+    echo
+
+    log_ok "Audit complete"
+    ;;
+
+  query)
+    shift
+    print_header "GAQL Query"
+    gads_query "$1"
+    ;;
+
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    log_error "Unknown gads subcommand: $1"
+    show_help
+    exit 1
+    ;;
+esac

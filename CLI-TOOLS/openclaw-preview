@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw Preview — GTM Preview mode validation
+# Uses Chrome MCP for observable browser automation
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+show_help() {
+  print_header "Preview"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw preview ${CYAN}<url>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}OPTIONS${RESET}"
+  echo -e "  ${DIM}--container-id <id>${RESET}   GTM container ID for Preview mode"
+  echo -e "  ${DIM}--check-datalayer${RESET}     Inspect dataLayer after page load"
+  echo -e "  ${DIM}--check-network${RESET}       Monitor tracking network requests"
+  echo -e "  ${DIM}--check-consent${RESET}       Verify consent mode behavior"
+  echo -e "  ${DIM}--full${RESET}                Run all checks"
+  echo
+  echo -e "${BOLD}WHAT IT CHECKS${RESET}"
+  echo -e "  • GTM container loaded correctly"
+  echo -e "  • dataLayer populated with expected events"
+  echo -e "  • Network requests to GA4, Meta, Google Ads endpoints"
+  echo -e "  • Consent mode default/update states"
+  echo -e "  • Tag firing sequence in Preview"
+  echo
+  echo -e "${BOLD}REQUIRES${RESET}"
+  echo -e "  Chrome MCP (mcp__Claude_in_Chrome__*) for browser automation."
+  echo -e "  Run this command while Chrome is open with GTM Preview active."
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# Full preview validation${RESET}"
+  echo -e "  openclaw preview https://example.com --full"
+  echo
+  echo -e "  ${DIM}# Just check dataLayer${RESET}"
+  echo -e "  openclaw preview https://example.com --check-datalayer"
+}
+
+# ── Parse options ───────────────────────────────────────────────────────────
+URL=""
+CHECK_DL=false
+CHECK_NET=false
+CHECK_CONSENT=false
+CONTAINER="${GTM_CONTAINER_ID:-}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --container-id) CONTAINER="$2"; shift 2 ;;
+    --check-datalayer) CHECK_DL=true; shift ;;
+    --check-network) CHECK_NET=true; shift ;;
+    --check-consent) CHECK_CONSENT=true; shift ;;
+    --full) CHECK_DL=true; CHECK_NET=true; CHECK_CONSENT=true; shift ;;
+    --help|-h) show_help; exit 0 ;;
+    -*) log_error "Unknown option: $1"; exit 1 ;;
+    *) URL="$1"; shift ;;
+  esac
+done
+
+if [[ -z "$URL" ]]; then
+  log_error "URL required."
+  show_help
+  exit 1
+fi
+
+print_header "Preview Validation"
+echo
+log_step "Target: ${BOLD}$URL${RESET}"
+[[ -n "$CONTAINER" ]] && log_step "Container: $CONTAINER"
+echo
+
+# ── Preview validation is Chrome MCP dependent ──────────────────────────────
+# This generates the validation script that gets run via Chrome MCP
+# In practice, this is called from within Claude Code/Cowork with Chrome access
+
+VALIDATION_SCRIPT="${OPENCLAW_OUTPUT}/preview-validation-$(date +%Y%m%d-%H%M%S).js"
+
+cat > "$VALIDATION_SCRIPT" << 'JSEOF'
+// OpenClaw Preview Validation Script
+// Run via Chrome MCP javascript_tool or browser console
+
+(function() {
+  const results = {
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    checks: {}
+  };
+
+  // Check 1: GTM loaded
+  results.checks.gtm_loaded = !!window.google_tag_manager;
+  results.checks.gtm_containers = window.google_tag_manager 
+    ? Object.keys(window.google_tag_manager).filter(k => k.startsWith('GTM-'))
+    : [];
+
+  // Check 2: dataLayer
+  results.checks.dataLayer_exists = !!window.dataLayer;
+  results.checks.dataLayer_events = window.dataLayer 
+    ? window.dataLayer.map(e => e.event || e[0] || 'config').filter(Boolean)
+    : [];
+  results.checks.dataLayer_length = window.dataLayer ? window.dataLayer.length : 0;
+
+  // Check 3: Consent mode
+  const consentState = window.google_tag_manager 
+    ? (window.google_tag_manager['dataLayer']?.gtmConsentState || null)
+    : null;
+  results.checks.consent_mode = consentState;
+  
+  // Check 4: GA4 config
+  results.checks.ga4_configured = window.dataLayer 
+    ? window.dataLayer.some(e => e[0] === 'config' || (e.event === 'gtm.js'))
+    : false;
+
+  // Check 5: Performance entries (tracking requests)
+  const trackingDomains = [
+    'google-analytics.com',
+    'googleads.g.doubleclick.net',
+    'facebook.com/tr',
+    'connect.facebook.net',
+    'analytics.tiktok.com',
+    'px.ads.linkedin.com',
+    'tr.snapchat.com'
+  ];
+  
+  const perfEntries = performance.getEntriesByType('resource');
+  results.checks.tracking_requests = trackingDomains.map(domain => ({
+    domain,
+    requests: perfEntries.filter(e => e.name.includes(domain)).length
+  })).filter(d => d.requests > 0);
+
+  return JSON.stringify(results, null, 2);
+})();
+JSEOF
+
+log_ok "Validation script generated: ${BOLD}$VALIDATION_SCRIPT${RESET}"
+echo
+log_dim "To run this validation:"
+log_dim "  1. Open GTM Preview mode for your container"
+log_dim "  2. Navigate to $URL in the Preview tab"
+log_dim "  3. Run this script via Chrome DevTools console or Chrome MCP:"
+log_dim "     mcp__Claude_in_Chrome__javascript_tool"
+echo
+log_dim "Or use within Claude Code/Cowork:"
+log_dim "  openclaw mcp call chrome-devtools.execute_script --file $VALIDATION_SCRIPT"

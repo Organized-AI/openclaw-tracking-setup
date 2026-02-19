@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw Meta — Pixel + CAPI operations
+# Uses GTM MCP + Stape MCP via mcporter
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/gtm-helpers.sh"
+
+show_help() {
+  print_header "Meta"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw meta ${CYAN}<subcommand>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}SUBCOMMANDS${RESET}"
+  echo -e "  ${CYAN}audit${RESET}          Audit Meta tracking (Pixel tags in GTM + sGTM CAPI)"
+  echo -e "  ${CYAN}pixel-tags${RESET}     List Meta Pixel tags in GTM container"
+  echo -e "  ${CYAN}capi-clients${RESET}   List CAPI-related sGTM clients"
+  echo -e "  ${CYAN}event-map${RESET}      Show standard event mapping (GA4 ↔ Meta)"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# Full Meta tracking audit${RESET}"
+  echo -e "  openclaw meta audit"
+}
+
+case "${1:-help}" in
+  audit)
+    print_header "Meta Tracking Audit"
+    gtm_ensure_ids
+    echo
+
+    log_step "Meta Pixel Tags in GTM:"
+    # List all tags and filter for Meta/Facebook types
+    TAGS=$(gtm_list_tags 1)
+    echo "$TAGS" | jq '[.[] | select(.type == "flc" or .type == "html" or (.name | test("meta|facebook|fb|pixel"; "i")))]' 2>/dev/null || echo "$TAGS"
+    echo
+
+    log_step "sGTM Clients (check for CAPI/Webhook clients):"
+    gtm_list_clients
+    echo
+
+    log_ok "Meta audit complete"
+    log_dim "Note: For full Meta CAPI audit, connect Pipeboard Meta MCP"
+    ;;
+
+  pixel-tags)
+    print_header "Meta Pixel Tags"
+    gtm_ensure_ids
+    TAGS=$(gtm_list_tags 1)
+    echo "$TAGS" | jq '[.[] | select(.type == "flc" or (.name | test("meta|facebook|fb|pixel"; "i")))]' 2>/dev/null || echo "$TAGS"
+    ;;
+
+  capi-clients)
+    print_header "CAPI Clients"
+    gtm_list_clients
+    ;;
+
+  event-map)
+    print_header "Event Mapping: GA4 ↔ Meta"
+    echo
+    printf "${BOLD}%-25s %-25s %-20s${RESET}\n" "GA4 Event" "Meta Event" "Parameters"
+    printf "${DIM}%-25s %-25s %-20s${RESET}\n" "─────────────────────────" "─────────────────────────" "────────────────────"
+    printf "%-25s %-25s %-20s\n" "page_view" "PageView" "—"
+    printf "%-25s %-25s %-20s\n" "view_item" "ViewContent" "content_ids, value"
+    printf "%-25s %-25s %-20s\n" "add_to_cart" "AddToCart" "content_ids, value"
+    printf "%-25s %-25s %-20s\n" "begin_checkout" "InitiateCheckout" "value, currency"
+    printf "%-25s %-25s %-20s\n" "purchase" "Purchase" "value, currency, transaction_id"
+    printf "%-25s %-25s %-20s\n" "sign_up" "CompleteRegistration" "method"
+    printf "%-25s %-25s %-20s\n" "generate_lead" "Lead" "value, currency"
+    printf "%-25s %-25s %-20s\n" "search" "Search" "search_term"
+    printf "%-25s %-25s %-20s\n" "add_payment_info" "AddPaymentInfo" "value, currency"
+    printf "%-25s %-25s %-20s\n" "contact" "Contact" "—"
+    ;;
+
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    log_error "Unknown meta subcommand: $1"
+    show_help
+    exit 1
+    ;;
+esac

@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# ┌─────────────────────────────────────────────────┐
+# │  🦞 OpenClaw — Tracking Infrastructure CLI      │
+# │  Powered by mcporter + MCP servers              │
+# └─────────────────────────────────────────────────┘
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+VERSION="0.1.0"
+
+show_help() {
+  echo -e "${BOLD}${MAGENTA}🦞 OpenClaw${RESET} ${DIM}v${VERSION}${RESET}"
+  echo -e "${DIM}Tracking infrastructure CLI — powered by mcporter + MCP servers${RESET}"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw ${CYAN}<command>${RESET} ${DIM}[subcommand] [options]${RESET}"
+  echo
+  echo -e "${BOLD}COMMANDS${RESET}"
+  echo -e "  ${CYAN}gtm${RESET}        Google Tag Manager operations"
+  echo -e "             ${DIM}audit, list-tags, list-triggers, list-vars, status, publish${RESET}"
+  echo
+  echo -e "  ${CYAN}gads${RESET}       Google Ads operations"
+  echo -e "             ${DIM}audit, conversions, accounts${RESET}"
+  echo
+  echo -e "  ${CYAN}meta${RESET}       Meta Pixel + CAPI operations"
+  echo -e "             ${DIM}audit, pixel-tags, capi-status${RESET}"
+  echo
+  echo -e "  ${CYAN}stape${RESET}      Stape sGTM container management"
+  echo -e "             ${DIM}containers, domains, stats, power-ups${RESET}"
+  echo
+  echo -e "  ${CYAN}discover${RESET}   Crawl a site and identify tracking opportunities"
+  echo -e "             ${DIM}openclaw discover <url>${RESET}"
+  echo
+  echo -e "  ${CYAN}preview${RESET}    Validate GTM Preview mode"
+  echo -e "             ${DIM}openclaw preview <url>${RESET}"
+  echo
+  echo -e "  ${CYAN}qa${RESET}         Run conversion QA stories"
+  echo -e "             ${DIM}openclaw qa run <story.yaml>${RESET}"
+  echo
+  echo -e "  ${CYAN}mcp${RESET}        Direct mcporter passthrough"
+  echo -e "             ${DIM}openclaw mcp list gtm-mcp-server${RESET}"
+  echo
+  echo -e "  ${CYAN}env${RESET}        Check environment and MCP server connectivity"
+  echo -e "  ${CYAN}version${RESET}    Show version"
+  echo -e "  ${CYAN}help${RESET}       Show this help"
+  echo
+  echo -e "${BOLD}ENVIRONMENT${RESET}"
+  echo -e "  ${DIM}GTM_ACCOUNT_ID${RESET}      GTM Account ID"
+  echo -e "  ${DIM}GTM_CONTAINER_ID${RESET}    GTM Container ID"
+  echo -e "  ${DIM}GTM_WORKSPACE_ID${RESET}    GTM Workspace ID"
+  echo -e "  ${DIM}STAPE_API_KEY${RESET}       Stape API key"
+  echo -e "  ${DIM}GOOGLE_ADS_LOGIN_CUSTOMER_ID${RESET}  Google Ads login CID"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# Full GTM audit${RESET}"
+  echo -e "  openclaw gtm audit"
+  echo
+  echo -e "  ${DIM}# List Google Ads conversion actions${RESET}"
+  echo -e "  openclaw gads conversions"
+  echo
+  echo -e "  ${DIM}# Crawl a site for tracking opportunities${RESET}"
+  echo -e "  openclaw discover https://example.com"
+  echo
+  echo -e "  ${DIM}# Check all MCP server connectivity${RESET}"
+  echo -e "  openclaw env"
+}
+
+# ── Route commands ──────────────────────────────────────────────────────────
+case "${1:-help}" in
+  gtm)
+    shift
+    exec "$SCRIPT_DIR/openclaw-gtm" "$@"
+    ;;
+  gads)
+    shift
+    exec "$SCRIPT_DIR/openclaw-gads" "$@"
+    ;;
+  meta)
+    shift
+    exec "$SCRIPT_DIR/openclaw-meta" "$@"
+    ;;
+  stape)
+    shift
+    exec "$SCRIPT_DIR/openclaw-stape" "$@"
+    ;;
+  discover)
+    shift
+    exec "$SCRIPT_DIR/openclaw-discover" "$@"
+    ;;
+  preview)
+    shift
+    exec "$SCRIPT_DIR/openclaw-preview" "$@"
+    ;;
+  qa)
+    shift
+    exec "$SCRIPT_DIR/openclaw-qa" "$@"
+    ;;
+  mcp)
+    shift
+    mcp "$@"
+    ;;
+  env)
+    print_header "Environment Check"
+    echo
+    log_step "Checking mcporter..."
+    require_mcporter
+    log_ok "mcporter available"
+    echo
+
+    log_step "Checking environment variables..."
+    for var in GTM_ACCOUNT_ID GTM_CONTAINER_ID GTM_WORKSPACE_ID STAPE_API_KEY GOOGLE_ADS_LOGIN_CUSTOMER_ID; do
+      if [[ -n "${!var:-}" ]]; then
+        log_ok "$var = ${DIM}${!var:0:8}...${RESET}"
+      else
+        log_warn "$var not set"
+      fi
+    done
+    echo
+
+    log_step "Checking MCP server connectivity..."
+    for server in gtm-mcp-server stape-mcp-server; do
+      if mcp list "$server" &>/dev/null; then
+        log_ok "$server connected"
+      else
+        log_warn "$server not reachable"
+      fi
+    done
+    echo
+    log_ok "Environment check complete"
+    ;;
+  version|--version|-v)
+    echo "openclaw v${VERSION}"
+    ;;
+  help|--help|-h)
+    show_help
+    ;;
+  *)
+    log_error "Unknown command: $1"
+    echo
+    show_help
+    exit 1
+    ;;
+esac

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "gtm-mcp-server": {
+      "description": "Google Tag Manager MCP via Stape",
+      "command": "npx",
+      "args": ["-y", "@anthropic/gtm-mcp-server"]
+    },
+    "stape-mcp-server": {
+      "description": "Stape sGTM Container Management",
+      "command": "npx",
+      "args": ["-y", "@anthropic/stape-mcp-server"]
+    },
+    "google-ads": {
+      "description": "Google Ads MCP for GAQL queries",
+      "command": "npx",
+      "args": ["-y", "@anthropic/google-ads-mcp-server"]
+    },
+    "firecrawl": {
+      "description": "Firecrawl web scraping and crawling",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp-server"]
+    }
+  },
+  "imports": ["cursor", "claude-code", "claude-desktop"]
+}

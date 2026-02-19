@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw GTM — Google Tag Manager operations
+# Uses GTM MCP (Stape) via mcporter
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+source "$SCRIPT_DIR/lib/gtm-helpers.sh"
+
+show_help() {
+  print_header "GTM"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw gtm ${CYAN}<subcommand>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}SUBCOMMANDS${RESET}"
+  echo -e "  ${CYAN}audit${RESET}           Full container audit (tags + triggers + variables)"
+  echo -e "  ${CYAN}list-tags${RESET}       List all tags (paginated)"
+  echo -e "  ${CYAN}list-triggers${RESET}   List all triggers (paginated)"
+  echo -e "  ${CYAN}list-vars${RESET}       List all variables (paginated)"
+  echo -e "  ${CYAN}list-clients${RESET}    List sGTM clients"
+  echo -e "  ${CYAN}list-folders${RESET}    List folders"
+  echo -e "  ${CYAN}list-built-ins${RESET}  List built-in variables"
+  echo -e "  ${CYAN}container${RESET}       Get container details"
+  echo -e "  ${CYAN}status${RESET}          Workspace status (pending changes)"
+  echo -e "  ${CYAN}live${RESET}            Get live version info"
+  echo -e "  ${CYAN}publish${RESET}         Create version and publish"
+  echo -e "  ${CYAN}create-tag${RESET}      Create a tag from JSON config"
+  echo -e "  ${CYAN}create-trigger${RESET}  Create a trigger from JSON config"
+  echo -e "  ${CYAN}create-var${RESET}      Create a variable from JSON config"
+  echo -e "  ${CYAN}create-folder${RESET}   Create a folder"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# Full audit of the container${RESET}"
+  echo -e "  openclaw gtm audit"
+  echo
+  echo -e "  ${DIM}# List tags, page 2${RESET}"
+  echo -e "  openclaw gtm list-tags --page 2"
+  echo
+  echo -e "  ${DIM}# Create a tag from a JSON file${RESET}"
+  echo -e "  openclaw gtm create-tag '{\"name\":\"GA4 - Page View\",\"type\":\"gaawc\"}'"
+  echo
+  echo -e "  ${DIM}# Publish workspace changes${RESET}"
+  echo -e "  openclaw gtm publish"
+}
+
+# ── Parse global options ────────────────────────────────────────────────────
+PAGE=1
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --page) PAGE="$2"; shift 2 ;;
+    --page=*) PAGE="${1#*=}"; shift ;;
+    *) break ;;
+  esac
+done
+
+case "${1:-help}" in
+  audit)
+    print_header "GTM Audit"
+    gtm_ensure_ids
+    echo
+    log_step "Container: ${GTM_CONTAINER_ID}"
+    echo
+
+    log_step "Tags (page 1):"
+    gtm_list_tags 1
+    echo
+
+    log_step "Triggers (page 1):"
+    gtm_list_triggers 1
+    echo
+
+    log_step "Variables (page 1):"
+    gtm_list_variables 1
+    echo
+
+    log_step "Folders:"
+    gtm_list_folders
+    echo
+
+    log_step "sGTM Clients:"
+    gtm_list_clients
+    echo
+
+    log_step "Workspace Status:"
+    gtm_workspace_status
+    echo
+
+    log_ok "Audit complete"
+    ;;
+
+  list-tags)
+    print_header "GTM Tags"
+    gtm_list_tags "$PAGE"
+    ;;
+
+  list-triggers)
+    print_header "GTM Triggers"
+    gtm_list_triggers "$PAGE"
+    ;;
+
+  list-vars)
+    print_header "GTM Variables"
+    gtm_list_variables "$PAGE"
+    ;;
+
+  list-clients)
+    print_header "sGTM Clients"
+    gtm_list_clients
+    ;;
+
+  list-folders)
+    print_header "GTM Folders"
+    gtm_list_folders
+    ;;
+
+  list-built-ins)
+    print_header "GTM Built-in Variables"
+    gtm_list_built_in_variables
+    ;;
+
+  container)
+    print_header "GTM Container"
+    gtm_get_container
+    ;;
+
+  status)
+    print_header "Workspace Status"
+    gtm_workspace_status
+    ;;
+
+  live)
+    print_header "Live Version"
+    gtm_live_version
+    ;;
+
+  publish)
+    print_header "Publish"
+    gtm_ensure_ids
+    echo
+    log_step "Creating version from workspace..."
+    VERSION_RESULT=$(gtm_create_version "OpenClaw publish")
+    echo "$VERSION_RESULT"
+    echo
+
+    if confirm "Publish this version?"; then
+      VERSION_ID=$(echo "$VERSION_RESULT" | jq -r '.containerVersion.containerVersionId // empty' 2>/dev/null || echo "")
+      if [[ -n "$VERSION_ID" ]]; then
+        log_step "Publishing version $VERSION_ID..."
+        gtm_publish_version "$VERSION_ID"
+        log_ok "Published!"
+      else
+        log_error "Could not extract version ID from response."
+        exit 1
+      fi
+    else
+      log_warn "Publish cancelled."
+    fi
+    ;;
+
+  create-tag)
+    shift
+    print_header "Create Tag"
+    gtm_create_tag "$1"
+    ;;
+
+  create-trigger)
+    shift
+    print_header "Create Trigger"
+    gtm_create_trigger "$1"
+    ;;
+
+  create-var)
+    shift
+    print_header "Create Variable"
+    gtm_create_variable "$1"
+    ;;
+
+  create-folder)
+    shift
+    print_header "Create Folder"
+    gtm_create_folder "$1"
+    ;;
+
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    log_error "Unknown GTM subcommand: $1"
+    show_help
+    exit 1
+    ;;
+esac

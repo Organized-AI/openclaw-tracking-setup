@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# 🦞 OpenClaw QA — Conversion test story runner
+# Executes YAML test stories for tracking verification
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
+show_help() {
+  print_header "QA"
+  echo
+  echo -e "${BOLD}USAGE${RESET}"
+  echo -e "  openclaw qa ${CYAN}<subcommand>${RESET} ${DIM}[options]${RESET}"
+  echo
+  echo -e "${BOLD}SUBCOMMANDS${RESET}"
+  echo -e "  ${CYAN}run${RESET}            Run a QA test story"
+  echo -e "  ${CYAN}init${RESET}           Create a new test story template"
+  echo -e "  ${CYAN}list${RESET}           List available test stories"
+  echo -e "  ${CYAN}validate${RESET}       Validate a story YAML file"
+  echo
+  echo -e "${BOLD}EXAMPLES${RESET}"
+  echo -e "  ${DIM}# Create a new test story${RESET}"
+  echo -e "  openclaw qa init purchase-flow"
+  echo
+  echo -e "  ${DIM}# Run a test story${RESET}"
+  echo -e "  openclaw qa run stories/purchase-flow.yaml"
+  echo
+  echo -e "  ${DIM}# List all stories${RESET}"
+  echo -e "  openclaw qa list"
+}
+
+STORIES_DIR="${OPENCLAW_ROOT}/CLI-TOOLS/stories"
+mkdir -p "$STORIES_DIR"
+
+case "${1:-help}" in
+  init)
+    shift
+    STORY_NAME="${1:-test-story}"
+    STORY_FILE="${STORIES_DIR}/${STORY_NAME}.yaml"
+    
+    print_header "QA Story Init"
+    
+    cat > "$STORY_FILE" << YAML
+# OpenClaw QA Story: ${STORY_NAME}
+# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+name: "${STORY_NAME}"
+description: "Describe what this test validates"
+url: "https://example.com"
+
+steps:
+  - name: "Page Load"
+    action: navigate
+    url: "https://example.com"
+    wait: 3000
+    validate:
+      dataLayer:
+        - event: "gtm.js"
+        - event: "gtm.dom"
+      network:
+        - pattern: "google-analytics.com/g/collect"
+          params:
+            en: "page_view"
+
+  - name: "Click CTA Button"
+    action: click
+    selector: "button.cta-primary"
+    wait: 1000
+    validate:
+      dataLayer:
+        - event: "cta_click"
+          parameters:
+            button_text: "Get Started"
+      network:
+        - pattern: "google-analytics.com/g/collect"
+          params:
+            en: "cta_click"
+
+  - name: "Submit Form"
+    action: submit
+    selector: "form#lead-form"
+    fill:
+      - selector: "input[name='email']"
+        value: "test@example.com"
+      - selector: "input[name='name']"
+        value: "Test User"
+    wait: 2000
+    validate:
+      dataLayer:
+        - event: "generate_lead"
+      network:
+        - pattern: "google-analytics.com/g/collect"
+          params:
+            en: "generate_lead"
+        - pattern: "facebook.com/tr"
+          params:
+            ev: "Lead"
+      console:
+        - pattern: "!error"
+          description: "No console errors"
+
+expected_endpoints:
+  ga4: "google-analytics.com/g/collect"
+  meta_pixel: "facebook.com/tr"
+  meta_capi: "graph.facebook.com"
+  google_ads: "googleads.g.doubleclick.net/pagead/conversion"
+YAML
+
+    log_ok "Story created: ${BOLD}$STORY_FILE${RESET}"
+    log_dim "Edit the story, then run: openclaw qa run $STORY_FILE"
+    ;;
+
+  run)
+    shift
+    STORY_FILE="${1:-}"
+    
+    if [[ -z "$STORY_FILE" || ! -f "$STORY_FILE" ]]; then
+      log_error "Story file required and must exist."
+      log_dim "  openclaw qa run stories/my-story.yaml"
+      exit 1
+    fi
+    
+    print_header "QA Runner"
+    echo
+    log_step "Story: ${BOLD}$STORY_FILE${RESET}"
+    echo
+    
+    # Parse story name
+    STORY_NAME=$(grep '^name:' "$STORY_FILE" | head -1 | sed 's/name: *"\?//;s/"\?$//' || echo "Unknown")
+    STORY_URL=$(grep '^url:' "$STORY_FILE" | head -1 | sed 's/url: *"\?//;s/"\?$//' || echo "")
+    
+    log_step "Running: ${BOLD}$STORY_NAME${RESET}"
+    [[ -n "$STORY_URL" ]] && log_step "URL: $STORY_URL"
+    echo
+    
+    # Count steps
+    STEP_COUNT=$(grep -c '  - name:' "$STORY_FILE" || echo "0")
+    log_info "Steps to execute: $STEP_COUNT"
+    echo
+    
+    log_warn "QA story execution requires browser automation."
+    log_dim "Run within Claude Code/Cowork with Chrome MCP or Playwright MCP."
+    log_dim "The story file defines the test; the browser agent executes it."
+    echo
+    log_dim "To execute via Claude Code:"
+    log_dim "  claude --dangerously-skip-permissions"
+    log_dim "  > Read $STORY_FILE and execute each step using Chrome MCP tools."
+    log_dim "  > For each step, validate the dataLayer and network assertions."
+    ;;
+
+  list)
+    print_header "QA Stories"
+    echo
+    if ls "$STORIES_DIR"/*.yaml &>/dev/null 2>&1; then
+      for story in "$STORIES_DIR"/*.yaml; do
+        NAME=$(grep '^name:' "$story" | head -1 | sed 's/name: *"\?//;s/"\?$//')
+        DESC=$(grep '^description:' "$story" | head -1 | sed 's/description: *"\?//;s/"\?$//')
+        echo -e "  ${CYAN}$(basename "$story")${RESET}"
+        echo -e "    ${BOLD}$NAME${RESET} — ${DIM}$DESC${RESET}"
+        echo
+      done
+    else
+      log_dim "No stories found. Create one with: openclaw qa init <name>"
+    fi
+    ;;
+
+  validate)
+    shift
+    STORY_FILE="${1:-}"
+    
+    if [[ -z "$STORY_FILE" || ! -f "$STORY_FILE" ]]; then
+      log_error "Story file required."
+      exit 1
+    fi
+    
+    print_header "QA Validate"
+    echo
+    
+    # Basic YAML validation
+    if command -v yq &>/dev/null; then
+      if yq eval '.' "$STORY_FILE" &>/dev/null; then
+        log_ok "YAML syntax valid"
+      else
+        log_error "YAML syntax error"
+        exit 1
+      fi
+    else
+      log_warn "yq not installed — skipping YAML validation"
+    fi
+    
+    # Check required fields
+    for field in name url steps; do
+      if grep -q "^${field}:" "$STORY_FILE"; then
+        log_ok "Field present: $field"
+      else
+        log_error "Missing required field: $field"
+      fi
+    done
+    
+    STEP_COUNT=$(grep -c '  - name:' "$STORY_FILE" || echo "0")
+    log_info "Steps: $STEP_COUNT"
+    ;;
+
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    log_error "Unknown qa subcommand: $1"
+    show_help
+    exit 1
+    ;;
+esac
