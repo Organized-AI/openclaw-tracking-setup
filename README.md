@@ -70,6 +70,12 @@ CLI-TOOLS/
 │   └── gtm-helpers.sh    # GTM MCP helper functions
 ├── config/
 │   └── mcporter.json     # MCP server definitions
+├── google-ads/           # Google Ads deployment & credential scripts
+│   ├── *.sh              # 9 deployment/verification scripts
+│   ├── oauth-server.py   # Python OAuth callback server
+│   ├── config/
+│   │   └── exec-approvals.json  # Tool authorization (24 read + 11 write)
+│   └── README.md         # Google Ads CLI documentation
 └── stories/              # QA test story files (YAML)
 ```
 
@@ -154,6 +160,65 @@ The `mcp()` wrapper function in `lib/common.sh` handles mcporter detection, fall
 
 ---
 
+## Google Ads CLI Tools
+
+The `CLI-TOOLS/google-ads/` directory contains deployment, credential management, and verification scripts for the full 35-tool Google Ads CLI inventory (24 read + 11 write across 9 categories).
+
+### Tool Inventory (35 Tools)
+
+| Category | Read Tools | Write Tools | Total |
+|----------|-----------|-------------|-------|
+| Campaigns | `list-campaigns`, `get-campaign`, `campaign-performance` | `create-campaign`, `update-campaign`, `pause-campaign` | 6 |
+| Ad Groups | `list-ad-groups`, `get-ad-group`, `ad-group-performance` | `create-ad-group`, `update-ad-group` | 5 |
+| Ads | `list-ads`, `get-ad`, `ad-performance` | — | 3 |
+| Keywords | `list-keywords`, `keyword-performance`, `search-terms` | `add-keywords`, `update-keyword-bids` | 5 |
+| Performance | `account-performance`, `daily-performance`, `device-performance`, `geo-performance` | — | 4 |
+| Accounts | `list-accounts`, `account-info` | — | 2 |
+| Analytics | `auction-insights`, `quality-score`, `change-history` | — | 3 |
+| Conversions | `list-conversions`, `conversion-performance` | `create-conversion-action`, `update-conversion` | 4 |
+| Shopping | `list-products`, `shopping-performance` | `update-product-group` | 3 |
+
+### Deployment Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `deploy-google-ads-credentials.sh` | Deploy API credentials (JSON + YAML) to Mac Mini via Tailscale SSH |
+| `deploy-google-ads-tools-md.sh` | Deploy TOOLS.md to Mac Mini for agent write authorization |
+| `diagnose-google-ads.sh` | Diagnostic check across 4 credential locations |
+| `fix-google-ads-credentials.sh` | Interactive credential setup wizard |
+| `generate-google-ads-refresh-token.sh` | CLI OAuth flow (copy-paste auth code) |
+| `generate-google-ads-token-web.sh` | Web OAuth flow (local HTTP server callback) |
+| `monitor-google-ads-cli.sh` | Health monitor with Telegram/email/desktop alerts |
+| `setup-google-ads-on-macmini.sh` | Full Mac Mini credential setup (run directly on target) |
+| `verify-google-ads-deployment.sh` | 4-layer verification for all 35 tools |
+| `verify-tool-deployment.sh` | Generic OpenClaw tool verifier (reusable) |
+| `oauth-server.py` | Python OAuth callback server for web flow |
+
+### 4-Layer Verification
+
+The verification scripts follow a layered approach:
+
+1. **Infrastructure** — Binary exists, PATH configured, credential files present
+2. **Read Tools** — 14 read tool API tests with live responses
+3. **Write Tools** — 11 write tool syntax checks (optional `--write` flag for live API)
+4. **Agent Integration** — TOOLS.md references, gateway connectivity, exec-approvals config
+
+### Exec-Approvals
+
+The `config/exec-approvals.json` file controls which CLI subcommands an agent can execute (deny by default). It defines three rules: `allow-google-ads-read` (24 tools), `allow-google-ads-write` (11 tools), and `allow-google-ads-help`.
+
+### Required Environment Variables
+
+```bash
+export GOOGLE_ADS_DEVELOPER_TOKEN="your-developer-token"
+export GOOGLE_ADS_CLIENT_ID="your-oauth-client-id"
+export GOOGLE_ADS_CLIENT_SECRET="your-oauth-client-secret"
+export GOOGLE_ADS_REFRESH_TOKEN="your-refresh-token"
+export GOOGLE_ADS_LOGIN_CUSTOMER_ID="your-mcc-customer-id"
+```
+
+---
+
 ## Repository Structure
 
 ```
@@ -173,7 +238,21 @@ openclaw-tracking-setup/
 │   ├── openclaw-preview              # GTM Preview validation
 │   ├── openclaw-qa                   # QA test story runner
 │   ├── lib/                          # Shared libraries
-│   └── config/                       # MCP server config
+│   ├── config/                       # MCP server config
+│   └── google-ads/                   # Google Ads deployment & credential scripts
+│       ├── deploy-google-ads-credentials.sh
+│       ├── deploy-google-ads-tools-md.sh
+│       ├── diagnose-google-ads.sh
+│       ├── fix-google-ads-credentials.sh
+│       ├── generate-google-ads-refresh-token.sh
+│       ├── generate-google-ads-token-web.sh
+│       ├── monitor-google-ads-cli.sh
+│       ├── setup-google-ads-on-macmini.sh
+│       ├── verify-google-ads-deployment.sh
+│       ├── verify-tool-deployment.sh
+│       ├── oauth-server.py
+│       ├── config/exec-approvals.json
+│       └── README.md
 │
 ├── PLANNING/
 │   └── BOWSER-OPENCLAW-INTEGRATION-PLAN.md  # Browser automation integration plan
@@ -298,6 +377,7 @@ claude --dangerously-skip-permissions
 | **GTM MCP (Stape)** | `gtm_tag`, `gtm_trigger`, `gtm_variable`, `gtm_workspace`, `gtm_version`, `gtm_container`, `gtm_template`, `gtm_client`, `gtm_transformation`, `gtm_built_in_variable`, `gtm_folder` | openclaw-gtm, openclaw-meta |
 | **Stape MCP** | `stape_container_crud`, `stape_container_domains`, `stape_container_power_ups`, `stape_container_analytics`, `stape_container_statistics` | openclaw-gtm, openclaw-meta |
 | **Google Ads MCP** | `google-ads-download-report`, `list-accounts` | openclaw-google-ads |
+| **Google Ads CLI** | 35 tools across 9 categories (24 read + 11 write) | openclaw-google-ads, verification scripts |
 | **Chrome MCP** | `read_page`, `read_network_requests`, `read_console_messages`, `javascript_tool`, `navigate`, `find`, `computer` | Bowser Preview Agent |
 
 ### Tracking Endpoint Registry
@@ -338,6 +418,7 @@ The `tracking-references/` directory contains implementation patterns extracted 
 | Phase 6 Bowser Integration Plan | ✅ Complete |
 | Claude Code Prompts (all 7 phases) | ✅ Complete |
 | CLI Tools (8 sub-tools + libraries) | ✅ Complete |
+| Google Ads CLI Tools (35 tools + 11 scripts) | ✅ Complete |
 | Newsletter & LinkedIn Post | ✅ Complete |
 | Plugin Build (Phases 0-6) | 🔲 Ready to Execute |
 
@@ -358,6 +439,10 @@ Each plugin in `plugin-marketplace/` follows the Claude Code plugin spec: `plugi
 ### Extending CLI Tools
 
 New CLI tools follow the same pattern: create a `CLI-TOOLS/openclaw-{name}` bash script, source `lib/common.sh` for utilities, and use the `mcp()` wrapper function for MCP server calls. Add the tool's routing entry to the main `openclaw` dispatcher.
+
+### Adding Google Ads Tools
+
+New Google Ads deployment scripts go in `CLI-TOOLS/google-ads/`. Update `config/exec-approvals.json` to register new tool subcommands. Follow the 4-layer verification pattern and run `verify-google-ads-deployment.sh` to validate.
 
 ---
 
