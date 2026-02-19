@@ -1,0 +1,31 @@
+{
+  "name": "GTM-AI MCP Template",
+  "version": "1.0.0",
+  "description": "MCP server template for GTM automation",
+  "servers": [
+    {
+      "name": "gtm-mcp",
+      "command": "node",
+      "args": ["gtm-cli/dist/index.js"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${HOME}/.gtm/credentials.json",
+        "GTM_ACCOUNT_ID": "process.env.GTM_ACCOUNT_ID",
+        "GTM_CONTAINER_ID": "process.env.GTM_CONTAINER_ID",
+        "GTM_WORKSPACE_ID": "process.env.GTM_WORKSPACE_ID"
+      },
+      "tools": [
+        "list-tags",
+        "create-tag",
+        "update-tag",
+        "delete-tag",
+        "list-triggers",
+        "create-trigger",
+        "list-variables",
+        "create-variable",
+        "deploy-container",
+        "audit-container",
+        "validate-tracking"
+      ]
+    }
+  ]
+}
